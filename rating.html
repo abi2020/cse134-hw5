@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .star {
+            font-size: 24px;
+            color: gray;
+            cursor: pointer;
+        }
+        .star:hover, .star.selected {
+            color: gold;
+        }
+        #messageContainer {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Rating Widget</h1>
+        <nav>
+			<ul>
+				<li><a href="index.html">Home</a></li>
+				<li><a href="rating.html">Star Rating</a></li>
+				<li><a href="weather.html">Weather</a></li>
+			</ul>
+		</nav>
+    </header>
+
+    <noscript>
+        <form action="https://httpbin.org/post" method="POST">
+            <label for="rating">How satisfied are you?</label>
+            <input type="hidden" name="question" value="How satisfied are you?">
+            <input type="hidden" name="sentBy" value="HTML">
+            <input type="number" id="rating" name="rating" min="1" max="5" value="0" required>
+            <button type="submit">Submit</button>
+        </form>
+    </noscript>
+
+    <form action="https://httpbin.org/post" method="POST" id="ratingForm">
+        <input type="hidden" name="question" value="How satisfied are you?">
+        <input type="hidden" name="sentBy" value="HTML">
+        <input type="number" id="rating" name="rating" min="1" max="5" value="0" style="display: none" required>
+        
+        <div id="starContainer"></div>
+        <div id="messageContainer"></div>
+    </form>
+
+    <script>
+        const form = document.getElementById('ratingForm');
+        const ratingInput = document.getElementById('rating');
+        const starContainer = document.getElementById('starContainer');
+        const messageContainer = document.getElementById('messageContainer');
+        const maxRating = parseInt(document.getElementById('rating').getAttribute('max'));
+
+        for (let i = 1; i <= maxRating; i++) {
+            const star = document.createElement('span');
+            star.innerHTML = '★';
+            star.classList.add('star');
+            star.addEventListener('mouseover', () => handleStarHover(i));
+            star.addEventListener('click', () => handleStarClick(i));
+            starContainer.appendChild(star);
+        }
+
+        function handleStarHover(rating) {
+            const stars = document.querySelectorAll('.star');
+            stars.forEach((star, index) => {
+                star.classList.remove('selected');
+                if (index < rating) {
+                    star.classList.add('selected');
+                } else {
+                    star.classList.remove('selected');
+                }
+            });
+        }
+
+        function handleStarClick(rating) {
+            ratingInput.value = rating;
+
+            const percentage = (rating / maxRating) * 100;
+            let message = '';
+            if (percentage >= 80) {
+                message = 'Thanks for ' + rating + ' star rating!';
+            } else {
+                message = 'Thanks for your feedback of ' + rating + ' stars. We\'ll try to do better!';
+            }
+
+            messageContainer.textContent = message;
+            starContainer.innerHTML = '';
+            sendToServer();
+        }
+
+        function sendToServer() {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://httpbin.org/post', true);
+            xhr.setRequestHeader('X-Sent-By', 'JS');
+            const formData = new FormData();
+            formData.append('rating', ratingInput.value);
+            formData.append('sentBy', 'JS');
+            xhr.send(formData);
+            console.log(formData);
+        }
+    </script>
+
+</body>
+</html>
