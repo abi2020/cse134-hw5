@@ -1,21 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        .star {
-            font-size: 24px;
-            color: gray;
-            cursor: pointer;
-        }
-        .star:hover, .star.selected {
-            color: gold;
-        }
-        #messageContainer {
-            margin-top: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :host {
+      display: inline-block;
+      font-size: 24px;
+    }
+
+    .rating-container {
+      display: flex;
+      cursor: pointer;
+    }
+
+    .star {
+      color: #ccc;
+      margin: 0 2px;
+    }
+
+    .star:hover,
+    .star.active {
+      color: #ffcc00;
+    }
+
+    #feedbackMessage {
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
     <header>
@@ -39,70 +51,117 @@
         </form>
     </noscript>
 
-    <form action="https://httpbin.org/post" method="POST" id="ratingForm">
-        <input type="hidden" name="question" value="How satisfied are you?">
-        <input type="hidden" name="sentBy" value="HTML">
-        <input type="number" id="rating" name="rating" min="1" max="5" value="0" style="display: none" required>
-        
-        <div id="starContainer"></div>
-        <div id="messageContainer"></div>
-    </form>
+  <script>
+    class RatingWidget extends HTMLElement {
+      constructor() {
+        super();
+        this.stars = 5;
+        this.value = 0;
+        this.message = '';
+        this.attachShadow({ mode: 'open' });
 
-    <script>
-        const form = document.getElementById('ratingForm');
-        const ratingInput = document.getElementById('rating');
-        const starContainer = document.getElementById('starContainer');
-        const messageContainer = document.getElementById('messageContainer');
-        const maxRating = parseInt(document.getElementById('rating').getAttribute('max'));
+        this.render();
+        this.addEventListeners();
+      }
 
-        for (let i = 1; i <= maxRating; i++) {
-            const star = document.createElement('span');
-            star.innerHTML = '★';
-            star.classList.add('star');
-            star.addEventListener('mouseover', () => handleStarHover(i));
-            star.addEventListener('click', () => handleStarClick(i));
-            starContainer.appendChild(star);
-        }
+      render() {
+        const starsHtml = Array.from({ length: this.stars }, (_, index) => `
+          <span class="star ${index < this.value ? 'active' : ''}" data-index="${index + 1}">&#9733;</span>
+        `).join('');
 
-        function handleStarHover(rating) {
-            const stars = document.querySelectorAll('.star');
-            stars.forEach((star, index) => {
-                star.classList.remove('selected');
-                if (index < rating) {
-                    star.classList.add('selected');
-                } else {
-                    star.classList.remove('selected');
-                }
-            });
-        }
+        const messageHtml = `
+          <div id="feedbackMessage">${this.message}</div>
+        `;
 
-        function handleStarClick(rating) {
-            ratingInput.value = rating;
-
-            const percentage = (rating / maxRating) * 100;
-            let message = '';
-            if (percentage >= 80) {
-                message = 'Thanks for ' + rating + ' star rating!';
-            } else {
-                message = 'Thanks for your feedback of ' + rating + ' stars. We\'ll try to do better!';
+        this.shadowRoot.innerHTML = `
+          <style>
+            :host {
+              display: inline-block;
+              font-size: 24px;
             }
 
-            messageContainer.textContent = message;
-            starContainer.innerHTML = '';
-            sendToServer();
+            .rating-container {
+              display: flex;
+              cursor: pointer;
+            }
+
+            .star {
+              color: #ccc;
+              margin: 0 2px;
+            }
+
+            .star:hover,
+            .star.active {
+              color: #ffcc00;
+            }
+
+            #feedbackMessage {
+              margin-top: 10px;
+            }
+          </style>
+          <div class="rating-container">
+            ${this.value ? messageHtml : starsHtml}
+          </div>
+        `;
+      }
+
+      addEventListeners() {
+        const stars = this.shadowRoot.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+          star.addEventListener('click', () => this.handleStarClick(index + 1));
+          star.addEventListener('mouseover', () => this.handleStarHover(index + 1));
+          star.addEventListener('mouseout', () => this.handleStarMouseOut());
+        });
+      }
+
+      handleStarClick(value) {
+        this.value = value;
+        this.message = '';
+
+        // Additional code from handleStarClick
+        const percentage = (this.value / this.stars) * 100;
+        if (percentage >= 80) {
+          this.message = 'Thanks for ' + this.value + ' star rating!';
+        } else {
+          this.message = 'Thanks for your feedback of ' + this.value + ' stars. We\'ll try to do better!';
         }
 
-        function sendToServer() {
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'https://httpbin.org/post', true);
-            xhr.setRequestHeader('X-Sent-By', 'JS');
-            const formData = new FormData();
-            formData.append('rating', ratingInput.value);
-            formData.append('sentBy', 'JS');
-            xhr.send(formData);
-            console.log(formData);
-        }
-    </script>
+        this.render();
 
+        // Set headers and send data to the server
+        const requestOptions = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Sent-By': 'JS',
+          },
+          body: `sentBy=JS&rating=${this.value}`, // Add any additional form data here
+        };
+
+        fetch("https://httpbin.org/post", requestOptions)
+          .then(response => response.json())
+          .then(data => console.log(data))
+          .catch(error => console.error('Error:', error));
+      }
+
+      handleStarHover(value) {
+        const stars = this.shadowRoot.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+          star.classList.toggle('active', index < value);
+        });
+      }
+
+      handleStarMouseOut() {
+        const stars = this.shadowRoot.querySelectorAll('.star');
+        stars.forEach((star) => {
+          star.classList.remove('active');
+        });
+      }
+    }
+
+    customElements.define('rating-widget', RatingWidget);
+  </script>
+
+  <rating-widget></rating-widget>
 </body>
 </html>
