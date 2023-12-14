@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UCSD Weather Widget</title>
+  <title>Weather Component</title>
 </head>
 <body>
+
     <header>
         <nav>
 			<ul>
@@ -17,47 +18,73 @@
         <h1>Current Weather</h2>
     </header>
 
-
-    <div id="weather-widget">
-        <p id="temperature"></p>
-        <p id="conditions"></p>
-        <p id="humidity"></p>
-        <p id ="wind-speed"></p>
-        <img id="weather-icon" alt="Weather Icon">
-      </div>
-
 <noscript>
     <h2>Current Weather Conditions Unavailable</h1>
 </noscript>
-
+<!-- Weather Component -->
+<weather-widget></weather-widget>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const apiUrl = 'https://api.weather.gov/gridpoints/SGX/54,19/forecast';
+  // Define the weather component
+  class WeatherComponent extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: 'open' });
+    }
 
-  fetch(apiUrl)
-    .then(response => response.json())
-    .then(data => {
-      const temperature = data.properties.periods[0].temperature;
-      const conditions = data.properties.periods[0].shortForecast;
-      const humidity = data.properties.periods[0].relativeHumidity.value;
-      const icon = data.properties.periods[0].icon;
-      const windSpeed = data.properties.periods[0].windSpeed;
+    connectedCallback() {
+      this.render();
+      this.fetchWeatherData();
+    }
 
-      // Display temperature and conditions
-      document.getElementById('temperature').innerText = `Temperature: ${temperature} °F`;
-      document.getElementById('conditions').innerText = `Conditions: ${conditions}`;
-      document.getElementById('humidity').innerText = `Humidity: ${humidity}%`;
-      document.getElementById('wind-speed').innerText = `Wind Speed: ${windSpeed}`;
-    // document.getElementById('conditions').innerText = icon;  
+    render() {
+      this.shadowRoot.innerHTML = `
+        <style>
+          /* Add some styling if needed */
+        </style>
+            
+        <div id="weather-container">
+            <p id="temperature"></p>
+            <p id="conditions"></p>
+            <p id="humidity"></p>
+            <p id ="wind-speed"></p>
+            <img id="weather-icon" alt="Weather Icon">
+        </div>
 
-      // Display weather icon
-    //   const iconUrl = `https://www.weather.gov//icons/wtf/${icon}.png`;
-    //   document.getElementById('weather-icon').src = iconUrl;
-    document.getElementById('weather-icon').src = icon;
-    })
-    .catch(error => console.error('Error fetching weather data:', error));
-});
+      `;
+    }
+
+    fetchWeatherData() {
+      const apiUrl = 'https://api.weather.gov/gridpoints/SGX/54,19/forecast';
+
+      // Fetch weather data from the API
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          this.updateWeatherData(data);
+        })
+        .catch(error => {
+          console.error('Error fetching weather data:', error);
+        });
+    }
+
+    updateWeatherData(data) {
+      const temperatureElement = this.shadowRoot.getElementById('temperature');
+      const conditionsElement = this.shadowRoot.getElementById('conditions');
+      const humidityElement = this.shadowRoot.getElementById('humidity');
+      const windSpeedElement = this.shadowRoot.getElementById('wind-speed');
+      const iconElement = this.shadowRoot.getElementById('weather-icon');
+
+      // Update the content of the weather component
+      temperatureElement.textContent = `Temperature: ${data.properties.periods[0].temperature}°C`;
+      conditionsElement.textContent = `Conditions: ${data.properties.periods[0].shortForecast}`;
+      humidityElement.textContent = `Humidity: ${data.properties.periods[0].relativeHumidity.value}%`;
+      windSpeedElement.textContent = `Wind Speed: ${data.properties.periods[0].windSpeed}`;
+      iconElement.src = data.properties.periods[0].icon;
+    }
+  }
+
+  customElements.define('weather-widget', WeatherComponent);
 </script>
 
 </body>
